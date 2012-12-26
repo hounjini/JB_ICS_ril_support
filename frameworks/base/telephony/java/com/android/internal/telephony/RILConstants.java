@@ -298,5 +298,63 @@ cat include/telephony/ril.h | \
     int RIL_UNSOL_RIL_CONNECTED = 1034;
     int RIL_UNSOL_VOICE_RADIO_TECH_CHANGED = 1035;
     int RIL_UNSOL_STK_SEND_SMS_RESULT = 11002; /* Samsung specific */
+
+    int RIL_REQUEST_SET_ISIM_AUTH = 526;
+    int RIL_REQUEST_RESET_WSIM_STATE = 545;
+
+    /* import from ril.h to support legacy ril working*/
+    public final int _RADIO_STATE_OFF = 0;                   /* Radio explictly powered off (eg CFUN=0) */
+    public final int _RADIO_STATE_UNAVAILABLE = 1;           /* Radio unavailable (eg, resetting or not booted) */
+                                                             /* States 2-9 below are deprecated. Just leaving them here for backward compatibility. */
+    public final int _RADIO_STATE_SIM_NOT_READY = 2;         /* Radio is on, but the SIM interface is not ready */
+    public final int _RADIO_STATE_SIM_LOCKED_OR_ABSENT = 3;  /* SIM PIN locked, PUK required, network personalization locked, or SIM absent */
+    public final int _RADIO_STATE_SIM_READY = 4;             /* Radio is on and SIM interface is available */
+    public final int _RADIO_STATE_RUIM_NOT_READY = 5;        /* Radio is on, but the RUIM interface is not ready */
+    public final int _RADIO_STATE_RUIM_READY = 6;            /* Radio is on and the RUIM interface is available */
+    public final int _RADIO_STATE_RUIM_LOCKED_OR_ABSENT = 7; /* RUIM PIN locked, PUK required, network personalization locked, or RUIM absent */
+    public final int _RADIO_STATE_NV_NOT_READY = 8;          /* Radio is on, but the NV interface is not available */
+    public final int _RADIO_STATE_NV_READY = 9;              /* Radio is on and the NV interface is available */
+    public final int _RADIO_STATE_ON = 10;                   /* Radio is on */
+	
+    public final int _RADIO_TECH_UNKNOWN = 0;
+    public final int _RADIO_TECH_GPRS = 1;
+    public final int _RADIO_TECH_EDGE = 2;
+    public final int _RADIO_TECH_UMTS = 3;
+    public final int _RADIO_TECH_IS95A = 4;
+    public final int _RADIO_TECH_IS95B = 5;
+    public final int _RADIO_TECH_1xRTT =  6;
+    public final int _RADIO_TECH_EVDO_0 = 7;
+    public final int _RADIO_TECH_EVDO_A = 8;
+    public final int _RADIO_TECH_HSDPA = 9;
+    public final int _RADIO_TECH_HSUPA = 10;
+    public final int _RADIO_TECH_HSPA = 11;
+    public final int _RADIO_TECH_EVDO_B = 12;
+    public final int _RADIO_TECH_EHRPD = 13;
+    public final int _RADIO_TECH_LTE = 14;
+    public final int _RADIO_TECH_HSPAP = 15;       // HSPA+
+    public final int _RADIO_TECH_GSM = 16 ;        // Only supports voice
+	
+    public final int _CDMA_SUBSCRIPTION_SOURCE_RUIM_SIM = 0;
+    public final int _CDMA_SUBSCRIPTION_SOURCE_NV = 1;
+	
+    public final int _RIL_E_SUCCESS = 0;
+    public final int _RIL_E_RADIO_NOT_AVAILABLE = 1;              /* If radio did not start or is resetting */
+    public final int _RIL_E_GENERIC_FAILURE = 2;
+    public final int _RIL_E_PASSWORD_INCORRECT = 3;               /* for PIN/PIN2 methods only! */
+    public final int _RIL_E_SIM_PIN2 = 4;                         /* Operation requires SIM PIN2 to be entered */
+    public final int _RIL_E_SIM_PUK2 = 5;                         /* Operation requires SIM PIN2 to be entered */
+    public final int _RIL_E_REQUEST_NOT_SUPPORTED = 6;
+    public final int _RIL_E_CANCELLED = 7;
+    public final int _RIL_E_OP_NOT_ALLOWED_DURING_VOICE_CALL = 8; /* data ops are not allowed during voice call on a Class C GPRS device */
+    public final int _RIL_E_OP_NOT_ALLOWED_BEFORE_REG_TO_NW = 9;  /* data ops are not allowed before device registers in network */
+    public final int _RIL_E_SMS_SEND_FAIL_RETRY = 10;             /* fail to send sms and need retry */
+    public final int _RIL_E_SIM_ABSENT = 11;                      /* fail to set the location where CDMA subscription shall be retrieved because of SIM or RUIM card absent */
+    public final int _RIL_E_SUBSCRIPTION_NOT_AVAILABLE = 12;      /* fail to find CDMA subscription from specified location */
+    public final int _RIL_E_MODE_NOT_SUPPORTED = 13;              /* HW does not support preferred network type */
+    public final int _RIL_E_FDN_CHECK_FAILURE = 14;               /* command failed because recipient is not on FDN list */
+    public final int _RIL_E_ILLEGAL_SIM_OR_ME = 15 ;              /* network selection failed due to illegal SIM or ME */
+	
+    public final int _JELLYBEAN_RIL_VERSION = 7;
+    public final int _RIL_IS_NOT_PRESENT = -1;
 }
 

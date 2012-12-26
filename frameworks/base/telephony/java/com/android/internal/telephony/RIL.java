@@ -210,6 +210,33 @@ public class RIL extends BaseCommands implements CommandsInterface {
     static final boolean RILJ_LOGD = true;
     static final boolean RILJ_LOGV = false; // STOP SHIP if true
 
+    /* additional variables for supporting legacy ril */
+    boolean HTC_ICS_RIL = true;        /*if you are going to use HTC ics ril, set this variable true */
+
+    int currentRadioState = 0;
+
+    /* For older RILs that do not support new commands RIL_REQUEST_VOICE_RADIO_TECH and
+       RIL_UNSOL_VOICE_RADIO_TECH_CHANGED messages, decode the voice radio tech from
+       radio state message and store it. Every time there is a change in Radio State
+       check to see if voice radio tech changes and notify telephony
+     */
+    int voiceRadioTech = -1;
+
+    /* For older RILs that do not support new commands RIL_REQUEST_GET_CDMA_SUBSCRIPTION_SOURCE
+       and RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED messages, decode the subscription
+       source from radio state and store it. Every time there is a change in Radio State
+       check to see if subscription source changed and notify telephony
+     */
+    int cdmaSubscriptionSource = -1;
+
+    /* For older RILs that do not send RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED, decode the
+       SIM/RUIM state from radio state and store it. Every time there is a change in Radio State,
+       check to see if SIM/RUIM status changed and notify telephony
+     */
+    int simRuimStatus = -1;
+
+
+
     /**
      * Wake lock timeout should be longer than the longest timeout in
      * the vendor ril.
@@ -684,10 +711,45 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override public void 
     getVoiceRadioTechnology(Message result) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_VOICE_RADIO_TECH, result);
-
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
-        send(rr);
+        if(mRilVersion < _JELLYBEAN_RIL_VERSION && mRilVersion > _RIL_IS_NOT_PRESENT) {
+            if ((_RADIO_STATE_UNAVAILABLE == currentRadioState) || (_RADIO_STATE_OFF == currentRadioState)) {
+                int responseArray[];
+                responseArray = new int[1];
+                responseArray[0] = -1;
+                rr.onError(_RIL_E_RADIO_NOT_AVAILABLE, responseArray);
+                rr.release();
+                return;
+            }
+
+            // RILs that support RADIO_STATE_ON should support this request.
+            if (_RADIO_STATE_ON == currentRadioState) {
+                //dispatchVoid(p, pRI);
+                return;
+            }
+
+            // For Older RILs, that do not support RADIO_STATE_ON, assume that they
+            // will not support this new request either and decode Voice Radio Technology
+            // from Radio State
+            voiceRadioTech = decodeVoiceRadioTechnology(currentRadioState);
+
+            if (voiceRadioTech < 0) {
+                int responseArray[];
+                responseArray = new int[1];
+                responseArray[0] = -1;
+                rr.onError(_RIL_E_GENERIC_FAILURE, responseArray);
+                rr.release();
+            } else {
+                int responseArray[];
+                responseArray = new int[1];
+                responseArray[0] = voiceRadioTech;
+                AsyncResult.forMessage(rr.mResult, responseArray, null);
+                rr.mResult.sendToTarget();
+            }
+        } else {
+            send(rr);
+        }
     }
 
 
@@ -2564,11 +2626,57 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         switch(response) {
             case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED:
-                /* has bonus radio state int */
-                RadioState newState = getRadioStateFromInt(p.readInt());
-                if (RILJ_LOGD) unsljLogMore(response, newState.toString());
+                if(mRilVersion < _JELLYBEAN_RIL_VERSION && mRilVersion > _RIL_IS_NOT_PRESENT) {
+                    int newRadioState = p.readInt();
+                    if((newRadioState > _RADIO_STATE_UNAVAILABLE) && (newRadioState < _RADIO_STATE_ON)) {        //if((newRadioState > RADIO_STATE_UNAVAILABLE) && (newRadioState < RADIO_STATE_ON)) {
+                        int newVoiceRadioTech;
+                        int newCdmaSubscriptionSource;
+                        int newSimStatus;
 
-                switchToRadioState(newState);
+                        newVoiceRadioTech = decodeVoiceRadioTechnology(newRadioState);
+                        if(newVoiceRadioTech != voiceRadioTech) {
+                            voiceRadioTech = newVoiceRadioTech;
+                            if (mVoiceRadioTechChangedRegistrants != null) {
+                                int responseArray[];
+                                responseArray = new int[1];
+                                responseArray[0] = voiceRadioTech;
+                                mVoiceRadioTechChangedRegistrants.notifyRegistrants(new AsyncResult(null, responseArray, null));
+                            }
+                        }
+                        if(is3gpp2(newVoiceRadioTech)) {
+                            newCdmaSubscriptionSource = decodeCdmaSubscriptionSource(newRadioState);
+                            if(newCdmaSubscriptionSource != cdmaSubscriptionSource) {
+                                cdmaSubscriptionSource = newCdmaSubscriptionSource;
+                                if (mCdmaSubscriptionChangedRegistrants != null) {
+                                    int responseArray[];
+                                    responseArray = new int[1];
+                                    responseArray[0] = cdmaSubscriptionSource;
+                                    mCdmaSubscriptionChangedRegistrants.notifyRegistrants(new AsyncResult (null, responseArray, null));
+                                }
+                            }
+                        }
+                        newSimStatus = decodeSimStatus(newRadioState);
+                        if(newSimStatus != simRuimStatus) {
+                            simRuimStatus = newSimStatus;
+                            if (mIccStatusChangedRegistrants != null) {
+                                mIccStatusChangedRegistrants.notifyRegistrants();
+                            }
+                        }
+                        /* Send RADIO_ON to telephony */
+                        newRadioState = _RADIO_STATE_ON;
+                    }
+                    RadioState newState = getRadioStateFromInt(newRadioState);
+                    if(newState == RadioState.RADIO_OFF) { currentRadioState = 0; }
+                    else if(newState == RadioState.RADIO_UNAVAILABLE) { currentRadioState = 1; }
+                    else if(newState == RadioState.RADIO_ON) { currentRadioState = 2; }
+                    switchToRadioState(newState);
+                } else {
+                    /* has bonus radio state int */
+                    RadioState newState = getRadioStateFromInt(p.readInt());
+                    if (RILJ_LOGD) unsljLogMore(response, newState.toString());
+
+                    switchToRadioState(newState);
+                }
             break;
             case RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED:
                 if (RILJ_LOGD) unsljLog(response);
@@ -3131,10 +3239,20 @@ public class RIL extends BaseCommands implements CommandsInterface {
     protected Object
     responseSimRefresh(Parcel p) {
         IccRefreshResponse response = new IccRefreshResponse();
-
-        response.refreshResult = p.readInt();
-        response.efId   = p.readInt();
-        response.aid = p.readString();
+        if(HTC_ICS_RIL && mRilVersion < _JELLYBEAN_RIL_VERSION && mRilVersion > _RIL_IS_NOT_PRESENT) {
+            int temp = p.readInt();
+            response.refreshResult = p.readInt();
+            if(temp > 1) {
+               response.efId   = p.readInt();
+            } else {
+               response.efId   = 0;
+            }
+            response.aid = "";
+        } else {
+            response.refreshResult = p.readInt();
+            response.efId   = p.readInt();
+            response.aid = p.readString();
+        }
         return response;
     }
 
@@ -3857,10 +3975,45 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void getCdmaSubscriptionSource(Message response) {
         RILRequest rr = RILRequest.obtain(
                 RILConstants.RIL_REQUEST_CDMA_GET_SUBSCRIPTION_SOURCE, response);
-
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
-        send(rr);
+        if(mRilVersion < _JELLYBEAN_RIL_VERSION && mRilVersion > _RIL_IS_NOT_PRESENT) {
+            if ((_RADIO_STATE_UNAVAILABLE == currentRadioState) || (_RADIO_STATE_OFF == currentRadioState)) {
+                int responseArray[];
+                responseArray = new int[1];
+                responseArray[0] = -1;
+                rr.onError(_RIL_E_RADIO_NOT_AVAILABLE, responseArray);
+                rr.release();
+                return;
+            }
+
+            // RILs that support RADIO_STATE_ON should support this request.
+            if (_RADIO_STATE_ON == currentRadioState) {
+                return;
+            }
+
+            // For Older RILs, that do not support RADIO_STATE_ON, assume that they
+            // will not support this new request either and decode CDMA Subscription Source
+            // from Radio State
+            cdmaSubscriptionSource = decodeCdmaSubscriptionSource(currentRadioState);
+
+            if (cdmaSubscriptionSource < 0) {
+                int responseArray[];
+                responseArray = new int[1];
+                responseArray[0] = -1;
+                rr.onError(_RIL_E_GENERIC_FAILURE, responseArray);
+                rr.release();
+                return;
+            } else {
+                int responseArray[];
+                responseArray = new int[1];
+                responseArray[0] = cdmaSubscriptionSource;
+                AsyncResult.forMessage(rr.mResult, responseArray, null);
+                rr.mResult.sendToTarget();
+            }
+         } else {
+            send(rr);
+         }
     }
 
     /**
