@@ -299,9 +299,6 @@ cat include/telephony/ril.h | \
     int RIL_UNSOL_VOICE_RADIO_TECH_CHANGED = 1035;
     int RIL_UNSOL_STK_SEND_SMS_RESULT = 11002; /* Samsung specific */
 
-    int RIL_REQUEST_SET_ISIM_AUTH = 526;
-    int RIL_REQUEST_RESET_WSIM_STATE = 545;
-
     /* import from ril.h to support legacy ril working*/
     public final int _RADIO_STATE_OFF = 0;                   /* Radio explictly powered off (eg CFUN=0) */
     public final int _RADIO_STATE_UNAVAILABLE = 1;           /* Radio unavailable (eg, resetting or not booted) */
