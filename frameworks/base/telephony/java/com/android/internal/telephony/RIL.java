@@ -2319,6 +2319,88 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return null;
     }
 
+
+
+    /* IMPORT FROM ril.cpp for libril.so */
+    public int
+    decodeVoiceRadioTechnology (int radioState) {
+        switch (radioState) {
+            case _RADIO_STATE_SIM_NOT_READY:
+            case _RADIO_STATE_SIM_LOCKED_OR_ABSENT:
+            case _RADIO_STATE_SIM_READY:
+                return _RADIO_TECH_UMTS;
+
+            case _RADIO_STATE_RUIM_NOT_READY:
+            case _RADIO_STATE_RUIM_READY:
+            case _RADIO_STATE_RUIM_LOCKED_OR_ABSENT:
+            case _RADIO_STATE_NV_NOT_READY:
+            case _RADIO_STATE_NV_READY:
+                return _RADIO_TECH_1xRTT;
+
+            default:
+                return -1;
+        }
+    }
+    
+    public boolean is3gpp2(int radioTech) {
+        switch (radioTech) {
+            case _RADIO_TECH_IS95A:
+            case _RADIO_TECH_IS95B:
+            case _RADIO_TECH_1xRTT:
+            case _RADIO_TECH_EVDO_0:
+            case _RADIO_TECH_EVDO_A:
+            case _RADIO_TECH_EVDO_B:
+            case _RADIO_TECH_EHRPD:
+                return true;
+            default:
+                return false;
+        }
+    }
+    
+    public int
+    decodeCdmaSubscriptionSource (int radioState) {
+        switch (radioState) {
+            case _RADIO_STATE_SIM_NOT_READY:
+            case _RADIO_STATE_SIM_LOCKED_OR_ABSENT:
+            case _RADIO_STATE_SIM_READY:
+            case _RADIO_STATE_RUIM_NOT_READY:
+            case _RADIO_STATE_RUIM_READY:
+            case _RADIO_STATE_RUIM_LOCKED_OR_ABSENT:
+                return _CDMA_SUBSCRIPTION_SOURCE_RUIM_SIM;
+
+            case _RADIO_STATE_NV_NOT_READY:
+            case _RADIO_STATE_NV_READY:
+                return _CDMA_SUBSCRIPTION_SOURCE_NV;
+
+            default:
+                return -1;
+        }
+    }
+    
+    public int decodeSimStatus (int radioState) {
+       switch (radioState) {
+           case _RADIO_STATE_SIM_NOT_READY:
+           case _RADIO_STATE_RUIM_NOT_READY:
+           case _RADIO_STATE_NV_NOT_READY:
+           case _RADIO_STATE_NV_READY:
+               return -1;
+           case _RADIO_STATE_SIM_LOCKED_OR_ABSENT:
+           case _RADIO_STATE_SIM_READY:
+           case _RADIO_STATE_RUIM_READY:
+           case _RADIO_STATE_RUIM_LOCKED_OR_ABSENT:
+               return radioState;
+           default:
+               return -1;
+       }
+    }
+    /* finish */
+
+
+
+
+
+
+
     protected void
     processSolicited (Parcel p) {
         int serial, error;
